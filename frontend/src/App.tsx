@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuthStore } from './store/authStore';
 import ChatPage from './components/chat/ChatPage';
 import HistoryPage from './components/history/HistoryPage';
 import ProfilePage from './components/profile/ProfilePage';
 import Navigation from './components/layout/Navigation';
 import AuthPage from './components/auth/AuthPage';
-import ProtectedRoute from './components/auth/ProtectedRoute';
 import './App.css';
 
 function App() {
