@@ -1,23 +1,20 @@
 import { useState, useEffect } from 'react';
-import { useAuthStore } from './store/authStore';
 import ChatPage from './components/chat/ChatPage';
 import HistoryPage from './components/history/HistoryPage';
 import ProfilePage from './components/profile/ProfilePage';
 import Navigation from './components/layout/Navigation';
 import AuthPage from './components/auth/AuthPage';
-import './App.css';
+import { useAuthStore } from './store/authStore';
 
 function App() {
-  const { user, session, loading, initializeAuth } = useAuthStore();
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
+  const { user, loading } = useAuthStore();
 
-  // 인증 상태 초기화
   useEffect(() => {
-    console.log('App: initializeAuth called');
+    // 인증 상태 초기화
     initializeAuth();
-  }, [initializeAuth]);
-
-  useEffect(() => {
+    
+    // 경로 변경 감지
     const handlePathChange = () => {
       setCurrentPath(window.location.pathname);
     };
@@ -26,52 +23,56 @@ function App() {
     return () => window.removeEventListener('popstate', handlePathChange);
   }, []);
 
-  console.log('App state:', { user, session, loading, currentPath });
+  // 인증 초기화 함수
+  const initializeAuth = async () => {
+    try {
+      await useAuthStore.getState().initializeAuth();
+    } catch (error) {
+      console.error('Auth initialization error:', error);
+    }
+  };
 
+  // 경로 변경 함수
+  const navigateTo = (path: string) => {
+    window.history.pushState({}, '', path);
+    setCurrentPath(path);
+  };
+
+  // 로딩 중일 때
   if (loading) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-primary-50 to-secondary-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-neutral-600">로딩 중...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-primary-700 font-medium">UNNI chat을 준비하고 있어요...</p>
         </div>
       </div>
     );
   }
 
+  // 라우팅 로직
   const renderContent = () => {
-    // 인증 페이지
-    if (currentPath.startsWith('/auth')) {
-      return <AuthPage />;
-    }
-
-    // 인증되지 않은 사용자는 로그인 페이지로
-    if (!user || !session) {
-      return <AuthPage />;
-    }
-
-    // 인증된 사용자의 페이지 라우팅
     switch (currentPath) {
-      case '/':
-      case '/chat':
-        return <ChatPage />;
+      case '/auth':
+        return <AuthPage />;
       case '/history':
-        return <HistoryPage />;
+        return user ? <HistoryPage /> : <ChatPage />;
       case '/profile':
-        return <ProfilePage />;
+        return user ? <ProfilePage /> : <ChatPage />;
+      case '/':
       default:
         return <ChatPage />;
     }
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50">
-      {/* 네비게이션은 인증된 사용자에게만 표시 */}
-      {user && session && !currentPath.startsWith('/auth') && (
-        <Navigation />
-      )}
-      
-      <main className="flex-1">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-secondary-50">
+      <Navigation 
+        currentPath={currentPath} 
+        onNavigate={navigateTo}
+        user={user}
+      />
+      <main className="container mx-auto px-4 py-8">
         {renderContent()}
       </main>
     </div>

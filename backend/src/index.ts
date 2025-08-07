@@ -41,26 +41,32 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-// 인증 미들웨어
+// 인증 미들웨어 (선택적)
 const authenticateUser = async (req: any, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Authorization header required' });
+      // 인증이 없어도 계속 진행 (익명 사용자)
+      req.user = { id: 'anonymous' };
+      return next();
     }
 
     const token = authHeader.substring(7);
     const { data: { user }, error } = await supabase.auth.getUser(token);
 
     if (error || !user) {
-      return res.status(401).json({ error: 'Invalid token' });
+      // 토큰이 유효하지 않아도 익명으로 진행
+      req.user = { id: 'anonymous' };
+      return next();
     }
 
     req.user = user;
     next();
   } catch (error) {
     console.error('Authentication error:', error);
-    res.status(401).json({ error: 'Authentication failed' });
+    // 오류가 발생해도 익명으로 진행
+    req.user = { id: 'anonymous' };
+    next();
   }
 };
 
@@ -74,9 +80,14 @@ app.get('/health', (req: Request, res: Response) => {
   });
 });
 
-// 대화 목록 조회 API
+// 대화 목록 조회 API (인증 선택적)
 app.get('/api/conversations', authenticateUser, async (req: any, res: Response) => {
   try {
+    // 익명 사용자는 빈 배열 반환
+    if (req.user.id === 'anonymous') {
+      return res.json([]);
+    }
+
     const { data, error } = await supabase
       .from('conversations')
       .select('*')
@@ -95,11 +106,16 @@ app.get('/api/conversations', authenticateUser, async (req: any, res: Response) 
   }
 });
 
-// 메시지 목록 조회 API
+// 메시지 목록 조회 API (인증 선택적)
 app.get('/api/conversations/:conversationId/messages', authenticateUser, async (req: any, res: Response) => {
   try {
     const { conversationId } = req.params;
     
+    // 익명 사용자는 빈 배열 반환
+    if (req.user.id === 'anonymous') {
+      return res.json({ messages: [] });
+    }
+
     const { data, error } = await supabase
       .from('messages')
       .select('*')
@@ -119,9 +135,15 @@ app.get('/api/conversations/:conversationId/messages', authenticateUser, async (
   }
 });
 
-// 새 대화 생성 API
+// 새 대화 생성 API (인증 선택적)
 app.post('/api/conversations', authenticateUser, async (req: any, res: Response) => {
   try {
+    // 익명 사용자는 임시 대화 ID 생성
+    if (req.user.id === 'anonymous') {
+      const tempConversationId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      return res.json({ id: tempConversationId, user_id: 'anonymous' });
+    }
+
     const { data, error } = await supabase
       .from('conversations')
       .insert([{ user_id: req.user.id }])
@@ -140,13 +162,25 @@ app.post('/api/conversations', authenticateUser, async (req: any, res: Response)
   }
 });
 
-// 메시지 저장 API
+// 메시지 저장 API (인증 선택적)
 app.post('/api/messages', authenticateUser, async (req: any, res: Response) => {
   try {
     const { conversation_id, content, role } = req.body;
     
     if (!conversation_id || !content || !role) {
       return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // 익명 사용자는 메시지를 저장하지 않음
+    if (req.user.id === 'anonymous') {
+      return res.json({ 
+        id: `temp_msg_${Date.now()}`,
+        conversation_id,
+        content,
+        role,
+        user_id: 'anonymous',
+        created_at: new Date().toISOString()
+      });
     }
 
     const { data, error } = await supabase
@@ -172,7 +206,7 @@ app.post('/api/messages', authenticateUser, async (req: any, res: Response) => {
   }
 });
 
-// AI 응답 생성 API
+// AI 응답 생성 API (인증 없음)
 app.post('/api/chat', async (req: Request, res: Response) => {
   try {
     const { message, conversationHistory = [] } = req.body;
@@ -281,7 +315,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
   }
 });
 
-// 스트리밍 응답 API 엔드포인트
+// 스트리밍 응답 API 엔드포인트 (인증 없음)
 app.post('/api/chat/stream', async (req: Request, res: Response) => {
   try {
     const { message, conversationHistory = [] } = req.body;
