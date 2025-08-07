@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { User, Session } from '@supabase/supabase-js';
+import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
 interface AuthState {
@@ -23,7 +23,7 @@ interface AuthState {
   initializeAuth: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set, get) => ({
+export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   session: null,
   loading: true,

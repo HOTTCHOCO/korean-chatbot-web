@@ -1,7 +1,8 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useAuthStore } from './store/authStore';
 import { AuthPage } from './components/auth/AuthPage';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { ChatPage } from './components/chat/ChatPage';
 import './App.css';
 
 function App() {
@@ -55,22 +56,8 @@ function App() {
         </header>
 
         {/* Main Content */}
-        <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-          <div className="px-4 py-6 sm:px-0">
-            <div className="border-4 border-dashed border-gray-200 rounded-lg h-96 flex items-center justify-center">
-              <div className="text-center">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                  채팅 인터페이스
-                </h2>
-                <p className="text-gray-600">
-                  여기에 실시간 Q&A 채팅 인터페이스가 구현됩니다.
-                </p>
-                <p className="text-sm text-gray-500 mt-2">
-                  T-004 작업에서 구현 예정
-                </p>
-              </div>
-            </div>
-          </div>
+        <main className="max-w-4xl mx-auto h-[calc(100vh-4rem)]">
+          <ChatPage />
         </main>
       </div>
     </ProtectedRoute>
