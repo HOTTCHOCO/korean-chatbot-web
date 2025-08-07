@@ -1,7 +1,6 @@
 // 메모리 캐시 시스템 (Redis 없이도 작동)
 const memoryCache = new Map<string, { response: string; timestamp: number; ttl: number }>();
 
-// 캐시 설정
 const CACHE_TTL = 3600000; // 1시간 (밀리초)
 const MAX_CACHE_SIZE = 1000; // 최대 캐시 항목 수
 
@@ -26,18 +25,16 @@ export class CacheManager {
     return CacheManager.instance;
   }
 
-  // 캐시 키 생성 (질문 내용 기반)
   private generateKey(message: string, conversationHistory: any[]): string {
     const cleanMessage = message.toLowerCase().trim();
     const historyContext = conversationHistory
-      .slice(-3) // 최근 3개 메시지만 고려
+      .slice(-3)
       .map(msg => msg.content.toLowerCase().trim())
       .join('|');
     
     return `${cleanMessage}|${historyContext}`;
   }
 
-  // 캐시에서 응답 찾기
   async get(message: string, conversationHistory: any[] = []): Promise<string | null> {
     const key = this.generateKey(message, conversationHistory);
     
@@ -56,7 +53,6 @@ export class CacheManager {
     return null;
   }
 
-  // 캐시에 응답 저장
   async set(message: string, response: string, conversationHistory: any[] = [], ttl: number = CACHE_TTL): Promise<void> {
     const key = this.generateKey(message, conversationHistory);
     const item: CacheItem = {
@@ -66,10 +62,11 @@ export class CacheManager {
     };
 
     try {
-      // 메모리 캐시 크기 제한
       if (this.cache.size >= MAX_CACHE_SIZE) {
         const oldestKey = this.cache.keys().next().value;
-        this.cache.delete(oldestKey);
+        if (oldestKey) {
+          this.cache.delete(oldestKey);
+        }
       }
       
       this.cache.set(key, item);
@@ -79,7 +76,6 @@ export class CacheManager {
     }
   }
 
-  // 캐시 통계
   getStats(): { size: number; type: string } {
     return {
       size: this.cache.size,
@@ -87,11 +83,9 @@ export class CacheManager {
     };
   }
 
-  // 캐시 정리
   async cleanup(): Promise<void> {
     const now = Date.now();
     
-    // 메모리 캐시 정리
     for (const [key, item] of this.cache.entries()) {
       if (now - item.timestamp > item.ttl) {
         this.cache.delete(key);
@@ -100,7 +94,6 @@ export class CacheManager {
   }
 }
 
-// 자주 묻는 질문에 대한 프리캐시
 const commonQuestions = [
   {
     question: "안녕하세요",
@@ -120,7 +113,6 @@ const commonQuestions = [
   }
 ];
 
-// 프리캐시 초기화
 export async function initializeCache(): Promise<void> {
   const cacheManager = CacheManager.getInstance();
   
@@ -130,5 +122,3 @@ export async function initializeCache(): Promise<void> {
   
   console.log('캐시 초기화 완료');
 }
-
-export { CacheManager };

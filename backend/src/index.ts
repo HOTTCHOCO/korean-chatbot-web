@@ -1,15 +1,35 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import { supabase } from './config/supabase';
-import { openai, SYSTEM_PROMPT, OPENAI_CONFIG } from './config/openai';
+import { createClient } from '@supabase/supabase-js';
+import OpenAI from 'openai';
+import { SYSTEM_PROMPT, OPENAI_CONFIG } from './config/openai';
 import { CacheManager, initializeCache } from './config/cache';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// 캐시 초기화
-initializeCache().catch(console.error);
+// Supabase 클라이언트 설정
+const supabaseUrl = process.env.SUPABASE_URL!;
+const supabaseKey = process.env.SUPABASE_ANON_KEY!;
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+// OpenAI 클라이언트 설정
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+// 캐시 매니저 초기화
+const cacheManager = CacheManager.getInstance();
+
+// 미들웨어 설정
+app.use(cors({
+  origin: process.env.CORS_ORIGIN ? 
+    process.env.CORS_ORIGIN.split(',').map(origin => origin.trim()) : 
+    ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'],
+  credentials: true
+}));
+app.use(express.json());
 
 // 성능 모니터링 미들웨어
 app.use((req, res, next) => {
@@ -21,111 +41,138 @@ app.use((req, res, next) => {
   next();
 });
 
-// CORS 설정 개선
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:5174', 
-  'http://localhost:5175',
-  process.env.CORS_ORIGIN
-].filter(Boolean);
-
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true
-}));
-
-app.use(express.json());
-
-// Authentication middleware
+// 인증 미들웨어
 const authenticateUser = async (req: any, res: any, next: any) => {
   try {
     const authHeader = req.headers.authorization;
-    
-    console.log('Auth middleware - headers:', req.headers);
-    console.log('Auth middleware - authHeader:', authHeader);
-    
-    if (!authHeader) {
-      console.log('Auth middleware - No authorization header');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'Authorization header required' });
     }
 
-    const token = authHeader.replace('Bearer ', '');
-    console.log('Auth middleware - token length:', token.length);
-    
-    // Supabase에서 사용자 정보 확인
+    const token = authHeader.substring(7);
     const { data: { user }, error } = await supabase.auth.getUser(token);
-    
-    console.log('Auth middleware - user:', user?.id);
-    console.log('Auth middleware - error:', error);
-    
+
     if (error || !user) {
-      console.log('Auth middleware - Invalid token or user not found');
       return res.status(401).json({ error: 'Invalid token' });
     }
 
     req.user = user;
-    console.log('Auth middleware - User authenticated:', user.id);
     next();
   } catch (error) {
-    console.error('Auth middleware error:', error);
+    console.error('Authentication error:', error);
     res.status(401).json({ error: 'Authentication failed' });
   }
 };
 
-// Health check endpoint
+// 헬스 체크 엔드포인트
 app.get('/health', (req, res) => {
-  const cacheStats = CacheManager.getInstance().getStats();
-  res.json({ 
+  res.json({
     status: 'OK',
     message: 'Backend server is running',
     timestamp: new Date().toISOString(),
-    cache: cacheStats
+    cache: cacheManager.getStats()
   });
 });
 
-// Root endpoint
-app.get('/', (req, res) => {
-  res.json({ 
-    message: '한국어 학습 챗봇 API 서버',
-    version: '1.0.0',
-    status: 'running'
-  });
-});
-
-// Supabase connection test endpoint
-app.get('/api/supabase-test', async (req, res) => {
+// 대화 목록 조회 API
+app.get('/api/conversations', authenticateUser, async (req: any, res) => {
   try {
     const { data, error } = await supabase
-      .from('profiles')
+      .from('conversations')
       .select('*')
-      .limit(1);
-    
+      .eq('user_id', req.user.id)
+      .order('created_at', { ascending: false });
+
     if (error) {
-      return res.status(500).json({ 
-        error: 'Supabase connection failed',
-        details: error.message
-      });
+      console.error('Supabase error:', error);
+      return res.status(500).json({ error: 'Failed to fetch conversations' });
     }
-    
-    res.json({ 
-      message: 'Supabase connection successful',
-      data: data
-    });
+
+    res.json(data || []);
   } catch (error) {
-    res.status(500).json({ 
-      error: 'Internal server error', 
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
+    console.error('API error:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// AI Chat Response endpoint - 캐싱 통합 버전
+// 메시지 목록 조회 API
+app.get('/api/conversations/:conversationId/messages', authenticateUser, async (req: any, res) => {
+  try {
+    const { conversationId } = req.params;
+    
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .eq('user_id', req.user.id)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Supabase error:', error);
+      return res.status(500).json({ error: 'Failed to fetch messages' });
+    }
+
+    res.json({ messages: data || [] });
+  } catch (error) {
+    console.error('API error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// 새 대화 생성 API
+app.post('/api/conversations', authenticateUser, async (req: any, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('conversations')
+      .insert([{ user_id: req.user.id }])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Supabase error:', error);
+      return res.status(500).json({ error: 'Failed to create conversation' });
+    }
+
+    res.json(data);
+  } catch (error) {
+    console.error('API error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// 메시지 저장 API
+app.post('/api/messages', authenticateUser, async (req: any, res) => {
+  try {
+    const { conversation_id, content, role } = req.body;
+    
+    if (!conversation_id || !content || !role) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const { data, error } = await supabase
+      .from('messages')
+      .insert([{
+        conversation_id,
+        content,
+        role,
+        user_id: req.user.id,
+      }])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Supabase error:', error);
+      return res.status(500).json({ error: 'Failed to save message' });
+    }
+
+    res.json(data);
+  } catch (error) {
+    console.error('API error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// AI 응답 생성 API
 app.post('/api/chat', async (req, res) => {
   try {
     const { message, conversationHistory = [] } = req.body;
@@ -145,19 +192,15 @@ app.post('/api/chat', async (req, res) => {
       });
     }
 
-    const cacheManager = CacheManager.getInstance();
-    const startTime = Date.now();
-
     // 캐시에서 응답 확인
     const cachedResponse = await cacheManager.get(message, conversationHistory);
     if (cachedResponse) {
-      const responseTime = Date.now() - startTime;
-      console.log('캐시 응답 사용:', { responseTime: `${responseTime}ms` });
-      
+      console.log('캐시 히트 - 즉시 응답');
       return res.json({ 
         response: cachedResponse,
-        cached: true,
-        responseTime: responseTime
+        usage: null,
+        responseTime: 0,
+        cached: true
       });
     }
 
@@ -178,6 +221,8 @@ app.post('/api/chat', async (req, res) => {
       model: OPENAI_CONFIG.model
     });
 
+    const startTime = Date.now();
+
     try {
       // 개선된 OpenAI API 호출
       const completion = await openai.chat.completions.create({
@@ -188,7 +233,6 @@ app.post('/api/chat', async (req, res) => {
         top_p: OPENAI_CONFIG.top_p,
         frequency_penalty: OPENAI_CONFIG.frequency_penalty,
         presence_penalty: OPENAI_CONFIG.presence_penalty,
-        timeout: 30000, // 30초 타임아웃
       });
 
       const responseTime = Date.now() - startTime;
@@ -278,14 +322,14 @@ app.post('/api/chat/stream', async (req, res) => {
 
     // 스트리밍 응답을 위한 헤더 설정
     res.writeHead(200, {
-      'Content-Type': 'text/plain',
-      'Transfer-Encoding': 'chunked',
+      'Content-Type': 'text/plain; charset=utf-8',
       'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive'
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Content-Type',
     });
 
     try {
-      // 스트리밍 OpenAI API 호출
       const stream = await openai.chat.completions.create({
         model: OPENAI_CONFIG.model,
         messages,
@@ -294,30 +338,29 @@ app.post('/api/chat/stream', async (req, res) => {
         top_p: OPENAI_CONFIG.top_p,
         frequency_penalty: OPENAI_CONFIG.frequency_penalty,
         presence_penalty: OPENAI_CONFIG.presence_penalty,
-        stream: true, // 스트리밍 활성화
-        timeout: 30000,
+        stream: true,
       });
 
       let fullResponse = '';
-      
+
       for await (const chunk of stream) {
-        const content = chunk.choices[0]?.delta?.content || '';
+        const content = chunk.choices[0]?.delta?.content;
         if (content) {
           fullResponse += content;
-          // 클라이언트에 실시간으로 전송
           res.write(`data: ${JSON.stringify({ content, done: false })}\n\n`);
         }
       }
 
       const responseTime = Date.now() - startTime;
-      
-      console.log('OpenAI 스트리밍 응답 완료:', {
+      console.log('스트리밍 응답 완료:', {
         responseTime: `${responseTime}ms`,
         responseLength: fullResponse.length
       });
 
-      // 스트리밍 완료 신호
-      res.write(`data: ${JSON.stringify({ content: '', done: true, responseTime })}\n\n`);
+      // 응답을 캐시에 저장
+      await cacheManager.set(message, fullResponse, conversationHistory);
+
+      res.write(`data: ${JSON.stringify({ content: '', done: true })}\n\n`);
       res.end();
 
     } catch (openaiError: any) {
@@ -327,227 +370,81 @@ app.post('/api/chat/stream', async (req, res) => {
         status: openaiError.status
       });
       
-      // 에러 시 대체 응답 스트리밍
+      // 오류 시 대체 응답 스트리밍
       const fallbackResponse = generateFallbackResponse(message);
-      const words = fallbackResponse.split(' ');
+      const chunks = fallbackResponse.split('').map(char => char);
       
-      for (let i = 0; i < words.length; i++) {
-        const word = words[i] + (i < words.length - 1 ? ' ' : '');
-        res.write(`data: ${JSON.stringify({ content: word, done: false })}\n\n`);
-        await new Promise(resolve => setTimeout(resolve, 50)); // 자연스러운 타이핑 효과
+      for (const chunk of chunks) {
+        res.write(`data: ${JSON.stringify({ content: chunk, done: false })}\n\n`);
+        await new Promise(resolve => setTimeout(resolve, 50)); // 50ms 지연
       }
       
-      res.write(`data: ${JSON.stringify({ content: '', done: true, error: openaiError.message })}\n\n`);
+      res.write(`data: ${JSON.stringify({ content: '', done: true })}\n\n`);
       res.end();
     }
 
   } catch (error) {
-    console.error('Streaming Chat API Error:', error);
-    res.write(`data: ${JSON.stringify({ content: '', done: true, error: '스트리밍 응답 중 오류가 발생했습니다.' })}\n\n`);
+    console.error('Stream API Error:', error);
+    res.write(`data: ${JSON.stringify({ content: '오류가 발생했습니다.', done: true })}\n\n`);
     res.end();
   }
 });
 
-// Get user conversations (with auth)
-app.get('/api/conversations', authenticateUser, async (req, res) => {
+// 임시 디버깅 엔드포인트
+app.get('/api/test/conversations', async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('conversations')
-      .select(`
-        *,
-        messages (*)
-      `)
-      .eq('user_id', req.user.id)
-      .order('created_at', { ascending: false });
-    
+      .select('*')
+      .limit(5);
+
     if (error) {
-      return res.status(500).json({ error: error.message });
+      console.error('Supabase error:', error);
+      return res.status(500).json({ error: 'Failed to fetch conversations' });
     }
-    
-    res.json({ conversations: data });
+
+    res.json({ data, error: null });
   } catch (error) {
-    res.status(500).json({ 
-      error: 'Internal server error', 
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
+    console.error('API error:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// Create new conversation (with auth)
-app.post('/api/conversations', authenticateUser, async (req, res) => {
+app.get('/api/test/messages', async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from('conversations')
-      .insert([{ user_id: req.user.id }])
-      .select()
-      .single();
-    
-    if (error) {
-      return res.status(500).json({ error: error.message });
-    }
-    
-    res.json({ conversation: data });
-  } catch (error) {
-    res.status(500).json({ 
-      error: 'Internal server error', 
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
-});
-
-// Add message to conversation (with auth)
-app.post('/api/messages', authenticateUser, async (req, res) => {
-  try {
-    const { conversation_id, role, content } = req.body;
-    
-    if (!conversation_id || !role || !content) {
-      return res.status(400).json({ 
-        error: 'conversation_id, role, and content are required' 
-      });
-    }
-    
-    const { data, error } = await supabase
-      .from('messages')
-      .insert([{ 
-        conversation_id, 
-        user_id: req.user.id, 
-        role, 
-        content 
-      }])
-      .select()
-      .single();
-    
-    if (error) {
-      return res.status(500).json({ error: error.message });
-    }
-    
-    res.json({ message: data });
-  } catch (error) {
-    res.status(500).json({ 
-      error: 'Internal server error', 
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
-});
-
-// Get messages for a specific conversation (with auth)
-app.get('/api/conversations/:conversationId/messages', authenticateUser, async (req, res) => {
-  try {
-    const { conversationId } = req.params;
-    
     const { data, error } = await supabase
       .from('messages')
       .select('*')
-      .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: true });
-    
+      .limit(5);
+
     if (error) {
-      return res.status(500).json({ error: error.message });
+      console.error('Supabase error:', error);
+      return res.status(500).json({ error: 'Failed to fetch messages' });
     }
-    
-    res.json({ messages: data });
+
+    res.json({ data, error: null });
   } catch (error) {
-    res.status(500).json({ 
-      error: 'Internal server error', 
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
+    console.error('API error:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// Test conversation creation (without auth for debugging)
-app.post('/api/test/conversations', async (req, res) => {
-  try {
-    console.log('Test conversation creation - no auth required');
-    
-    // 임시 사용자 ID 사용
-    const tempUserId = '123e4567-e89b-12d3-a456-426614174000';
-    
-    const { data, error } = await supabase
-      .from('conversations')
-      .insert([{ user_id: tempUserId }])
-      .select()
-      .single();
-    
-    if (error) {
-      console.error('Test conversation creation error:', error);
-      return res.status(500).json({ error: error.message });
-    }
-    
-    console.log('Test conversation created:', data);
-    res.json({ conversation: data });
-  } catch (error) {
-    console.error('Test conversation creation error:', error);
-    res.status(500).json({ 
-      error: 'Internal server error', 
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
+// 서버 시작
+app.listen(PORT, async () => {
+  console.log(`Server is running on port ${PORT}`);
+  
+  // 캐시 초기화
+  await initializeCache();
+  console.log('Cache initialized');
 });
 
-// Test message creation (without auth for debugging)
-app.post('/api/test/messages', async (req, res) => {
-  try {
-    const { conversation_id, role, content } = req.body;
-    
-    if (!conversation_id || !role || !content) {
-      return res.status(400).json({ 
-        error: 'conversation_id, role, and content are required' 
-      });
-    }
-    
-    // 임시 사용자 ID 사용
-    const tempUserId = '123e4567-e89b-12d3-a456-426614174000';
-    
-    const { data, error } = await supabase
-      .from('messages')
-      .insert([{ 
-        conversation_id, 
-        user_id: tempUserId, 
-        role, 
-        content 
-      }])
-      .select()
-      .single();
-    
-    if (error) {
-      console.error('Test message creation error:', error);
-      return res.status(500).json({ error: error.message });
-    }
-    
-    console.log('Test message created:', data);
-    res.json({ message: data });
-  } catch (error) {
-    console.error('Test message creation error:', error);
-    res.status(500).json({ 
-      error: 'Internal server error', 
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
-});
-
-// 개선된 대체 응답 생성 함수
 function generateFallbackResponse(userMessage: string): string {
   const responses = [
-    `안녕하세요! 질문해주셔서 감사해요. "${userMessage}"에 대한 답변을 준비하고 있어요. 잠시만 기다려주세요! 😊`,
-    
-    `안녕하세요! "${userMessage}"에 대해 궁금하시군요. 현재 시스템 점검 중이라 정확한 답변을 드리기 어려워요. 잠시 후 다시 시도해보세요! 💪`,
-    
-    `안녕하세요! "${userMessage}"에 대한 질문이시군요. 지금은 일시적으로 응답이 지연되고 있어요. 잠시 후 다시 질문해주시면 더 자세히 답변드릴게요! 🌟`,
-    
-    `안녕하세요! "${userMessage}"에 대해 궁금하시군요. 현재 시스템이 혼잡해서 정확한 답변을 드리기 어려워요. 잠시 후 다시 시도해보세요! 📚`,
-    
-    `안녕하세요! "${userMessage}"에 대한 질문이시군요. 지금은 일시적으로 응답이 지연되고 있어요. 잠시 후 다시 질문해주시면 더 자세히 답변드릴게요! ✨`
+    "죄송해요, 지금은 답변하기 어려워요. 조금 더 공부해볼게요! 😊",
+    "아직 그 부분은 제가 잘 모르겠어요. 다른 질문이 있으시면 언제든 물어보세요!",
+    "그 질문에 대해서는 아직 준비가 안 되어 있어요. 한국어 학습에 도움이 되는 다른 질문은 어떠신가요?",
+    "죄송합니다. 그 부분은 제가 아직 학습 중이에요. 다른 한국어 관련 질문이 있으시면 언제든 말씀해주세요!"
   ];
   
-  // 사용자 메시지의 길이에 따라 다른 응답 선택
-  const index = userMessage.length % responses.length;
-  return responses[index];
+  return responses[Math.floor(Math.random() * responses.length)];
 }
-
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Backend server running on port ${PORT}`);
-  console.log(`📡 Health check: http://localhost:${PORT}/health`);
-  console.log(`🔗 Supabase test: http://localhost:${PORT}/api/supabase-test`);
-  console.log(`🤖 AI Chat: http://localhost:${PORT}/api/chat`);
-});
