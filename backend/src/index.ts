@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
@@ -32,7 +32,7 @@ app.use(cors({
 app.use(express.json());
 
 // 성능 모니터링 미들웨어
-app.use((req, res, next) => {
+app.use((req: Request, res: Response, next: NextFunction) => {
   const start = Date.now();
   res.on('finish', () => {
     const duration = Date.now() - start;
@@ -42,7 +42,7 @@ app.use((req, res, next) => {
 });
 
 // 인증 미들웨어
-const authenticateUser = async (req: any, res: any, next: any) => {
+const authenticateUser = async (req: any, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -65,7 +65,7 @@ const authenticateUser = async (req: any, res: any, next: any) => {
 };
 
 // 헬스 체크 엔드포인트
-app.get('/health', (req, res) => {
+app.get('/health', (req: Request, res: Response) => {
   res.json({
     status: 'OK',
     message: 'Backend server is running',
@@ -75,7 +75,7 @@ app.get('/health', (req, res) => {
 });
 
 // 대화 목록 조회 API
-app.get('/api/conversations', authenticateUser, async (req: any, res) => {
+app.get('/api/conversations', authenticateUser, async (req: any, res: Response) => {
   try {
     const { data, error } = await supabase
       .from('conversations')
@@ -96,7 +96,7 @@ app.get('/api/conversations', authenticateUser, async (req: any, res) => {
 });
 
 // 메시지 목록 조회 API
-app.get('/api/conversations/:conversationId/messages', authenticateUser, async (req: any, res) => {
+app.get('/api/conversations/:conversationId/messages', authenticateUser, async (req: any, res: Response) => {
   try {
     const { conversationId } = req.params;
     
@@ -120,7 +120,7 @@ app.get('/api/conversations/:conversationId/messages', authenticateUser, async (
 });
 
 // 새 대화 생성 API
-app.post('/api/conversations', authenticateUser, async (req: any, res) => {
+app.post('/api/conversations', authenticateUser, async (req: any, res: Response) => {
   try {
     const { data, error } = await supabase
       .from('conversations')
@@ -141,7 +141,7 @@ app.post('/api/conversations', authenticateUser, async (req: any, res) => {
 });
 
 // 메시지 저장 API
-app.post('/api/messages', authenticateUser, async (req: any, res) => {
+app.post('/api/messages', authenticateUser, async (req: any, res: Response) => {
   try {
     const { conversation_id, content, role } = req.body;
     
@@ -173,7 +173,7 @@ app.post('/api/messages', authenticateUser, async (req: any, res) => {
 });
 
 // AI 응답 생성 API
-app.post('/api/chat', async (req, res) => {
+app.post('/api/chat', async (req: Request, res: Response) => {
   try {
     const { message, conversationHistory = [] } = req.body;
     
@@ -282,7 +282,7 @@ app.post('/api/chat', async (req, res) => {
 });
 
 // 스트리밍 응답 API 엔드포인트
-app.post('/api/chat/stream', async (req, res) => {
+app.post('/api/chat/stream', async (req: Request, res: Response) => {
   try {
     const { message, conversationHistory = [] } = req.body;
     
@@ -391,7 +391,7 @@ app.post('/api/chat/stream', async (req, res) => {
 });
 
 // 임시 디버깅 엔드포인트
-app.get('/api/test/conversations', async (req, res) => {
+app.get('/api/test/conversations', async (req: Request, res: Response) => {
   try {
     const { data, error } = await supabase
       .from('conversations')
@@ -410,7 +410,7 @@ app.get('/api/test/conversations', async (req, res) => {
   }
 });
 
-app.get('/api/test/messages', async (req, res) => {
+app.get('/api/test/messages', async (req: Request, res: Response) => {
   try {
     const { data, error } = await supabase
       .from('messages')
