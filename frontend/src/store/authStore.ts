@@ -23,7 +23,7 @@ interface AuthState {
   initializeAuth: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   session: null,
   loading: true,
@@ -126,23 +126,35 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   initializeAuth: async () => {
     try {
+      console.log('initializeAuth: 시작');
       set({ loading: true });
       
       // Get initial session
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error('initializeAuth: 세션 조회 오류', error);
+        set({ loading: false, error: error.message });
+        return;
+      }
+      
+      console.log('initializeAuth: 세션 조회 결과', { session: !!session, user: session?.user?.email });
       
       if (session) {
         set({ 
           user: session.user, 
           session, 
-          loading: false 
+          loading: false,
+          error: null
         });
+        console.log('initializeAuth: 사용자 로그인 상태로 설정');
       } else {
-        set({ loading: false });
+        set({ loading: false, user: null, session: null });
+        console.log('initializeAuth: 로그아웃 상태로 설정');
       }
 
       // Listen for auth changes
-      supabase.auth.onAuthStateChange(async (event, session) => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.email);
         
         if (event === 'SIGNED_IN' && session) {
@@ -161,7 +173,10 @@ export const useAuthStore = create<AuthState>((set) => ({
           });
         }
       });
+
+      console.log('initializeAuth: 완료');
     } catch (error) {
+      console.error('initializeAuth: 예외 발생', error);
       set({ 
         error: error instanceof Error ? error.message : '인증 초기화 중 오류가 발생했습니다.',
         loading: false 

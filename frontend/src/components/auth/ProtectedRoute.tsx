@@ -6,7 +6,7 @@ interface ProtectedRouteProps {
   fallback?: React.ReactNode;
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
   children, 
   fallback 
 }) => {
@@ -14,10 +14,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">로딩 중...</p>
+          <div className="w-16 h-16 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-neutral-600">로딩 중...</p>
         </div>
       </div>
     );
@@ -25,17 +25,17 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   if (!user) {
     return fallback || (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+          <h2 className="text-2xl font-bold text-primary-800 mb-4">
             로그인이 필요합니다
           </h2>
-          <p className="text-gray-600 mb-6">
+          <p className="text-neutral-600 mb-6">
             이 페이지에 접근하려면 로그인해주세요.
           </p>
           <button
             onClick={() => window.location.href = '/auth'}
-            className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700"
+            className="bg-primary-600 text-white px-6 py-2 rounded-lg hover:bg-primary-700 transition-colors duration-200 shadow-soft"
           >
             로그인하기
           </button>
@@ -46,3 +46,5 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   return <>{children}</>;
 };
+
+export default ProtectedRoute;

@@ -91,3 +91,4 @@ temp/
 
 # Render
 .render/
+*.backup
