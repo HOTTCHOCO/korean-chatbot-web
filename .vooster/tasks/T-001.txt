@@ -1,0 +1,31 @@
+# 프로젝트 개발 환경 및 배포 인프라 세팅
+
+**Task ID:** T-001
+**Status:** BACKLOG
+**Importance:** MUST
+**Complexity:** 4/10
+**Urgency:** 10/10
+**Dependencies:** None
+
+## Description
+
+### 설명
+프론트엔드(React+Vite), 백엔드(Node.js+Express) 기본 개발 환경을 구축하고, Vercel(프론트엔드)/Render(백엔드) 배포 연동까지 완료합니다. Git 레포지토리, CI/CD 파이프라인도 포함합니다.
+
+### 구현 상세
+1.  **모노레포 구조 생성**: `pnpm workspaces` 또는 유사한 도구를 사용하여 `frontend`와 `backend` 디렉토리를 포함하는 루트 프로젝트를 설정합니다.
+2.  **프론트엔드 환경 구축**: `frontend` 디렉토리에서 Vite를 사용하여 React+TypeScript 프로젝트를 생성합니다. (`npm create vite@latest frontend -- --template react-ts`)
+3.  **백엔드 환경 구축**: `backend` 디렉토리에서 Node.js 프로젝트를 초기화하고 (`npm init -y`), Express와 TypeScript 관련 패키지를 설치합니다. (`npm i express && npm i -D typescript @types/node @types/express ts-node-dev`)
+4.  **Git 및 GitHub 설정**: Git 레포지토리를 초기화하고, GitHub에 새로운 레포지토리를 생성하여 코드를 푸시합니다.
+5.  **Vercel 배포 연동**: Vercel 프로젝트를 생성하고 GitHub 레포지토리에 연결합니다. 배포 설정을 `frontend` 디렉토리로 지정하고, 프레임워크 프리셋으로 Vite를 선택합니다.
+6.  **Render 배포 연동**: Render에서 새로운 'Web Service'를 생성하고 동일한 GitHub 레포지토리에 연결합니다. 빌드 및 시작 명령어를 `backend` 디렉토리에 맞게 설정합니다. (예: `Build Command: npm install`, `Start Command: npm start`)
+7.  **CI/CD 파이프라인 확인**: `main` 브랜치에 코드를 푸시할 때 Vercel과 Render에서 자동으로 배포가 트리거되는지 확인합니다.
+
+### 테스트 전략
+- **로컬 환경 검증**: `frontend`와 `backend` 각각의 개발 서버가 로컬에서 정상적으로 실행되는지 확인합니다.
+- **배포 환경 검증**: `main` 브랜치에 변경 사항을 푸시한 후, Vercel과 Render에 배포된 애플리케이션이 공개 URL을 통해 정상적으로 접근되는지 확인합니다. 각 서비스의 기본 페이지가 오류 없이 로드되어야 합니다.
+
+---
+
+**Created:** 2025-08-07T03:01:17.682Z
+**Updated:** 2025-08-07T03:09:06.884Z

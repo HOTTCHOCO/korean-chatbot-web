@@ -1,0 +1,116 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# 韓国とも (Kankoku-Tomo) Design Guide
+
+## 1. Overall Mood (전체적인 무드)
+**신뢰할 수 있는 다정한 학습 파트너 (Trustworthy and Friendly Learning Partner)**
+
+서비스의 전반적인 무드는 전문성과 신뢰감을 기반으로 합니다. 중급 이상 학습자들이 깊이 있는 질문을 하고 정확한 답변을 기대하는 만큼, 차분하고 정돈된 디자인을 통해 학습에 집중할 수 있는 환경을 제공합니다. 동시에 '절친' 챗봇이라는 페르소나에 맞춰, 딱딱하지 않고 따뜻하며 정서적 유대감을 형성할 수 있는 부드럽고 친근한 감성을 더합니다. 차가운 기술이 아닌, 사용자와 함께 성장하는 다정한 파트너의 느낌을 전달하는 것이 핵심입니다.
+
+## 2. Reference Service (참조 서비스)
+참조 서비스로 Coursera를 선정했습니다. 신뢰감 있는 색상 사용과 명확하고 정돈된 정보 구조가 '韓国とも'가 지향하는 전문적 학습 경험에 부합합니다.
+
+- **Name**: Coursera
+- **Description**: 전 세계 유수 대학 및 기업의 강의를 제공하는 온라인 교육 플랫폼
+- **Design Mood**: 차분한 파란색을 중심으로 전문성과 신뢰감을 강조하며, 명확하고 정돈된 레이아웃으로 학습 효율을 높임
+- **Primary Color**: `#2A73CC`
+- **Secondary Color**: `#F3F7FB`
+
+## 3. Color & Gradient (색상 & 그라데이션)
+신뢰감을 주는 Cool Tone과 중-저채도 색상을 중심으로, 사용자가 편안함을 느끼고 학습에 집중할 수 있도록 컬러 시스템을 정의합니다.
+
+- **Primary Color**: `#2A73CC` (신뢰, 지성)
+- **Secondary Color**: `#F3F7FB` (차분함, 배경)
+- **Accent Color**: `#25304A` (강조, 가독성)
+- **Success/Positive Color**: `#3BAAAF` (성공, 긍정 피드백)
+- **Background Color**: `#F4F6F9` (전체 배경)
+- **Grayscale**:
+    - `Text`: `#333333`
+    - `Sub-text`: `#666666`
+    - `Border/Line`: `#DDDDDD`
+    - `Disabled`: `#CCCCCC`
+
+- **Mood**: Cool Tone, Mid-Low Saturation
+- **Color Usage**:
+    - **Primary**: 핵심 CTA 버튼, 활성화된 내비게이션, 링크, 사용자 채팅 버블 등 가장 중요한 인터랙션 요소에 사용합니다.
+    - **Secondary**: 챗봇 채팅 버블의 배경색으로 사용하여 사용자와 챗봇의 대화를 시각적으로 구분합니다.
+    - **Accent**: 주요 헤드라인 텍스트에 사용하여 정보의 위계를 명확히 합니다.
+    - **Background**: 전체 앱의 배경색으로 사용하여 눈의 피로를 줄이고 편안한 분위기를 조성합니다.
+    - **Grayscale**: 본문, 보조 텍스트, 비활성 요소 등에 사용하여 정보의 중요도를 조절하고 시각적 안정감을 줍니다.
+
+## 4. Typography & Font (타이포그래피 & 폰트)
+한국어와 일본어의 동시 사용성을 고려하여 가독성이 높은 폰트를 사용하고, 명확한 위계 시스템을 정의합니다.
+
+- **Font Family**: `Pretendard` (Korean), `Noto Sans JP` (Japanese), `sans-serif` (Fallback)
+- **Heading 1 (페이지 타이틀)**: Pretendard/Noto Sans JP, **28px**, **Bold (700)**
+- **Heading 2 (섹션 타이틀)**: Pretendard/Noto Sans JP, **22px**, **Bold (700)**
+- **Body (본문, 채팅 메시지)**: Pretendard/Noto Sans JP, **16px**, **Regular (400)**
+- **Sub-text (부가 정보, 캡션)**: Pretendard/Noto Sans JP, **14px**, **Regular (400)**
+- **Line Height**: `1.6` (본문 가독성 확보)
+- **Letter Spacing**: `0` (기본 설정)
+
+## 5. Layout & Structure (레이아웃 & 구조)
+사용자가 대화에 온전히 집중할 수 있도록 단순하고 일관된 레이아웃 구조를 채택합니다.
+
+- **Navigation**: 상단 고정 바 (Top Navigation Bar)
+    - 메뉴 수가 적고 (채팅, 대화 기록, 프로필) 채팅 인터페이스의 너비를 최대한 확보해야 하므로 상단 내비게이션이 가장 효율적입니다.
+- **Grid System**: 8px Grid System
+    - 모든 UI 요소의 간격과 크기를 8의 배수로 설정하여 디자인의 일관성과 질서를 유지합니다. (Base unit: 16px)
+- **Layout**: 단일 컬럼 레이아웃 (Single Column Layout)
+    - 메인 콘텐츠 영역은 채팅에 집중할 수 있도록 단일 컬럼으로 구성합니다. 넓은 화면에서는 최대 너비(max-width)를 약 `800px`로 제한하여 가독성을 확보합니다.
+- **Whitespace**: 충분한 여백 활용
+    - 요소 간 충분한 여백을 두어 시각적으로 편안하고 정돈된 느낌을 주며, 사용자가 정보에 집중하도록 돕습니다.
+
+## 6. Visual Style (비주얼 스타일)
+전문적이면서도 친근한 무드를 전달하기 위해 정제되고 일관된 비주얼 스타일을 정의합니다.
+
+- **Icons**:
+    - 스타일: 선(Outline) 스타일의 간결하고 현대적인 아이콘셋 (e.g., Feather Icons, Material Symbols)을 사용합니다.
+    - 목적: 서비스의 전문적이고 깔끔한 인상을 강화합니다.
+- **Illustrations**:
+    - 스타일: 온보딩, 빈 화면(Empty State) 등 필요한 경우에만 사용하며, 정의된 컬러 팔레트를 활용한 단순하고 따뜻한 스타일의 일러스트를 사용합니다. 과도하게 장식적인 요소는 지양합니다.
+- **Shadows & Borders**:
+    - 카드, 버튼, 채팅 버블 등에 미묘한 그림자(subtle shadow)를 사용하여 깊이감을 부여하고 컴포넌트를 구분합니다.
+    - 경계선은 연한 회색(`#DDDDDD`)을 사용하여 요소를 명확히 구분하되, 시각적 부담을 주지 않습니다.
+- **Corner Radius**:
+    - 버튼, 입력 필드, 카드 등 주요 컴포넌트에 `8px`의 일관된 둥근 모서리(corner radius)를 적용하여 부드럽고 현대적인 인상을 줍니다.
+
+## 7. UX Guide (UX 가이드)
+타겟 사용자의 특성과 목표에 맞춰 최적의 사용자 경험을 제공하기 위한 핵심 원칙을 정의합니다.
+
+- **전문가 중심의 명확성 (Clarity for Experts)**: 중급 이상 학습자를 위해 불필요한 단계를 최소화하고, 정보는 명확하고 밀도 있게 제공합니다. 키보드 단축키, 빠른 입력 등 효율성을 높이는 기능을 우선적으로 고려합니다.
+- **페르소나 기반의 상호작용 (Persona-Driven Interaction)**: 모든 챗봇의 응답과 시스템 메시지는 '다정하고 친절한 언니' 페르소나를 유지합니다. 항상 존댓말을 사용하며, 격려하고 지지하는 따뜻한 톤앤매너를 일관되게 적용합니다.
+- **끊김 없는 학습 흐름 (Seamless Learning Flow)**: `질문 → 답변 → 추가 학습 제안 → 복습`으로 이어지는 핵심 사용자 여정이 막힘없이 부드럽게 연결되도록 설계합니다. 사용자의 노력을 최소화하고 몰입을 유지하는 것을 최우선으로 합니다.
+- **정서적 안정감 제공 (Providing Emotional Safety)**: "온라인 학습의 고립감"이라는 Pain Point를 해결하기 위해, 챗봇의 공감 표현과 긍정적인 마이크로 인터랙션을 적극적으로 활용합니다. 사용자가 심리적 안정감을 느끼며 편안하게 질문할 수 있는 환경을 조성합니다.
+- **점진적 정보 공개 (Progressive Disclosure)**: 서비스가 처음인 사용자도 쉽게 적응할 수 있도록 친절한 온보딩과 가이드를 제공합니다. 고급 기능이나 명령어는 처음부터 노출하기보다, 사용자의 학습 단계에 맞춰 점진적으로 안내합니다.
+
+## 8. UI Component Guide (UI 컴포넌트 가이드)
+주요 UI 컴포넌트의 디자인 가이드를 구체적으로 명시하여 일관성을 확보합니다.
+
+- **Buttons (버튼)**
+    - **Primary CTA**: 배경은 Primary Color(`#2A73CC`)로 채우고 텍스트는 흰색으로 처리합니다. 마우스를 올리면(hover) 살짝 어두워지는 효과를 줍니다.
+    - **Secondary**: Primary Color로 외곽선을 그리고, 텍스트 역시 Primary Color를 사용합니다.
+    - **Chat Suggestion**: 챗봇의 제안 버튼은 Secondary 버튼 스타일을 따르거나, 더 가벼운 배경색(`#F3F7FB`)에 Primary Color 텍스트를 사용하여 대화의 흐름을 방해하지 않도록 합니다.
+
+- **Input Fields (입력 필드)**
+    - **Style**: 연한 회색(`_#DDDDDD_`)의 얇은 테두리와 `8px`의 둥근 모서리를 가집니다. 포커스 시 테두리 색상이 Primary Color로 변경되어 활성 상태를 명확히 알립니다.
+    - **Placeholder**: "궁금한 한국어 표현을 물어보세요..." 와 같이 사용자의 행동을 유도하는 친절한 안내 문구를 사용합니다.
+    - **Interaction**: '전송' 아이콘 버튼을 포함하며, 'Enter' 키로 메시지를 전송할 수 있습니다.
+
+- **Chat Bubbles (채팅 말풍선)**
+    - **User Bubble**: 오른쪽에 정렬하며, 배경색은 Primary Color(`#2A73CC`), 텍스트는 흰색을 사용합니다.
+    - **Chatbot Bubble**: 왼쪽에 정렬하며, 배경색은 Secondary Color(`#F3F7FB`), 텍스트는 Accent Color(`#25304A`)를 사용하여 사용자의 말풍선과 명확히 구분합니다.
+    - **Style**: `12px`의 둥근 모서리와 미묘한 그림자를 적용하여 입체감과 부드러움을 더합니다.
+
+- **Navigation Bar (상단 내비게이션)**
+    - **Style**: 흰색 또는 Background Color(`_#F4F6F9_`) 배경에 하단에 얇은 그림자나 경계선을 두어 콘텐츠 영역과 구분합니다.
+    - **Elements**: 좌측에 로고, 우측에 `대화`, `대화 기록`, `프로필/로그인` 메뉴를 배치합니다.
+    - **Active State**: 현재 활성화된 메뉴는 Primary Color 텍스트 또는 하단 밑줄로 표시하여 현재 위치를 명확하게 보여줍니다.
+
+- **Cards (대화 기록 카드)**
+    - **Style**: 흰색 배경, `8px` 둥근 모서리, 미묘한 테두리와 그림자를 적용하여 각 기록 항목을 구분합니다.
+    - **Content**: 대화 내용 일부, 타임스탬프, 즐겨찾기 아이콘을 표시합니다.
+    - **Hover State**: 마우스를 올리면 카드가 살짝 위로 올라오는 효과를 주어 인터랙션이 가능함을 암시합니다.

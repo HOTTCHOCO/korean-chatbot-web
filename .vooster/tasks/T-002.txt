@@ -1,0 +1,31 @@
+# Supabase 프로젝트 생성 및 DB 스키마 설계
+
+**Task ID:** T-002
+**Status:** BACKLOG
+**Importance:** MUST
+**Complexity:** 4/10
+**Urgency:** 10/10
+**Dependencies:** T-001
+
+## Description
+
+### 설명
+Supabase 프로젝트를 생성하고 `users`, `conversations`, `messages` 등 MVP에 필요한 테이블 및 인증 설정, 기본 RLS(Row Level Security) 정책을 설계합니다.
+
+### 구현 상세
+1.  **Supabase 프로젝트 생성**: Supabase 대시보드에 로그인하여 새 프로젝트를 생성하고, 생성된 프로젝트 URL과 `anon` 키를 안전하게 보관합니다.
+2.  **테이블 스키마 설계 (SQL Editor 사용)**:
+    -   `profiles`: Supabase의 `auth.users` 테이블과 1:1로 연결될 프로필 테이블을 생성합니다. `id (uuid, pk, references auth.users)`, `nickname (text)`, `updated_at (timestamptz)`.
+    -   `conversations`: 대화 세션을 저장할 테이블을 생성합니다. `id (uuid, pk)`, `user_id (uuid, fk to auth.users.id)`, `created_at (timestamptz)`.
+    -   `messages`: 각 대화의 메시지를 저장할 테이블을 생성합니다. `id (uuid, pk)`, `conversation_id (uuid, fk to conversations.id)`, `user_id (uuid, fk to auth.users.id)`, `role (text, 'user' or 'assistant')`, `content (text)`, `created_at (timestamptz)`.
+3.  **인증 설정**: Supabase 대시보드의 'Authentication' 섹션에서 이메일/비밀번호 기반 인증을 활성화합니다.
+4.  **데이터베이스 인덱스 추가**: TRD에 명시된 대로, `conversations(user_id)`와 `messages(user_id, created_at)`에 인덱스를 생성하여 조회 성능을 최적화합니다.
+
+### 테스트 전략
+- **테이블 구조 검증**: Supabase 대시보드의 Table Editor를 통해 모든 테이블과 컬럼, 관계(Foreign Keys)가 정확하게 생성되었는지 확인합니다.
+- **샘플 데이터 테스트**: 각 테이블에 수동으로 샘플 데이터를 삽입하여 제약 조건(constraints)이 올바르게 동작하는지 검증합니다.
+
+---
+
+**Created:** 2025-08-07T03:01:17.682Z
+**Updated:** 2025-08-07T03:01:17.682Z

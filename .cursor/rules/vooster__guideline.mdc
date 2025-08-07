@@ -1,0 +1,376 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# Kankoku-Tomo Project: Code Guidelines
+
+This document outlines the mandatory and recommended coding standards for the Kankoku-Tomo project. Adhering to these guidelines ensures code consistency, maintainability, and quality, facilitating efficient collaboration and future development.
+
+## 1. Project Overview
+
+Kankoku-Tomo is a web-based AI chatbot service designed for intermediate Japanese learners of Korean. It provides real-time Q&A, example sentences, and conversation logging, fostering emotional connection through a "best friend" persona.
+
+**Key Architectural Decisions:**
+*   **Frontend**: React (SPA) with Vite, Zustand for state management, deployed on Vercel.
+*   **Backend**: Node.js with Express.js, deployed on Render.
+*   **Database & Auth**: Supabase (PostgreSQL) for managed DB and authentication.
+*   **AI/ML**: OpenAI GPT-4o API for core chat, external Sentiment Analysis API.
+*   **Communication**: RESTful API (JSON over HTTPS) between client and backend. Direct Supabase Auth calls from client.
+*   **Organization**: Domain-driven and feature-based code organization. Layered architecture (Presentation, Business Logic, Data Access).
+
+## 2. Core Principles
+
+1.  **User-Centric Performance**: Deliver a responsive and delightful user experience, targeting AI responses within 5 seconds.
+2.  **Simplicity & Maintainability**: Favor clear, straightforward solutions over complex abstractions to ensure rapid development and easy debugging.
+3.  **Security by Design**: Implement robust security practices from the outset, protecting user data and API keys.
+4.  **Modularity & Reusability**: Design components and modules to be independent and reusable, promoting a scalable and organized codebase.
+5.  **Type Safety & Predictability**: Leverage TypeScript comprehensively to catch errors early and improve code clarity.
+
+## 3. Language-Specific Guidelines
+
+### TypeScript (General)
+*   **MUST**: Use TypeScript for all new code. Existing JavaScript files MUST be migrated to TypeScript (`.ts` or `.tsx`) as they are modified.
+*   **MUST**: Enable `strict` mode in `tsconfig.json`.
+*   **MUST**: Define explicit types for function parameters, return values, and complex object structures (e.g., API responses, component props).
+*   **MUST NOT**: Use `any` type unless absolutely necessary and with clear justification (e.g., for third-party libraries without type definitions), and `// @ts-ignore` comments should be avoided.
+
+```typescript
+// MUST: Explicitly type props and return values
+interface ChatMessageProps {
+  message: {
+    id: string;
+    text: string;
+    sender: 'user' | 'bot';
+    timestamp: string;
+  };
+}
+
+const ChatMessage = ({ message }: ChatMessageProps): JSX.Element => {
+  // ...
+};
+
+// MUST NOT: Rely on implicit any or loose typing
+// const ChatMessage = (props) => { // 'props' implicitly has an 'any' type.
+//   // ...
+// };
+```
+
+### React (Frontend)
+
+*   **File Organization**:
+    *   **MUST**: Follow the feature-based structure (`src/features/auth`, `src/features/chat`).
+    *   **MUST**: Group related components, hooks, and state within their respective feature folders.
+    *   **MUST**: Place truly reusable UI components (e.g., buttons, inputs) in `src/components/ui`. Layout components in `src/components/layout`.
+    *   **MUST**: Place global state definitions (Zustand stores) in `src/store`.
+    *   **MUST**: Keep page-level components in `src/pages`.
+*   **Import Management**:
+    *   **MUST**: Use absolute imports from `src` for better readability and refactoring. Configure `baseUrl` in `tsconfig.json`.
+
+```typescript
+// tsconfig.json
+{
+  "compilerOptions": {
+    "baseUrl": "src"
+  }
+}
+
+// MUST: Absolute import
+import { useAuthStore } from 'store/auth';
+import { Button } from 'components/ui/Button';
+
+// MUST NOT: Relative import hell
+// import { useAuthStore } from '../../../../store/auth';
+```
+
+*   **Error Handling**:
+    *   **MUST**: Implement React Error Boundaries for UI-level errors to prevent the entire application from crashing.
+    *   **MUST**: Use `try-catch` blocks for asynchronous API calls within `useEffect` or event handlers, providing user-friendly feedback.
+    *   **MUST**: Display clear, actionable error messages to the user for failed operations.
+
+```typescript
+// MUST: Error Boundary for UI errors
+// src/components/ErrorBoundary.tsx
+import React, { Component, ErrorInfo, ReactNode } from 'react';
+
+interface Props {
+  children?: ReactNode;
+}
+
+interface State {
+  hasError: boolean;
+}
+
+class ErrorBoundary extends Component<Props, State> {
+  public state: State = {
+    hasError: false
+  };
+
+  public static getDerivedStateFromError(_: Error): State {
+    return { hasError: true };
+  }
+
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("Uncaught error:", error, errorInfo);
+    // TODO: Log error to a service like Sentry
+  }
+
+  public render() {
+    if (this.state.hasError) {
+      return <h1 className="text-red-500">Something went wrong. Please try again later.</h1>;
+    }
+    return this.props.children;
+  }
+}
+
+// MUST: Use try-catch for API calls
+const fetchChatHistory = async () => {
+  try {
+    const response = await api.get('/chats');
+    // ...
+  } catch (error) {
+    console.error('Failed to fetch chat history:', error);
+    // MUST: Show user-friendly message
+    alert('Failed to load chat history. Please try again.');
+  }
+};
+```
+
+### Node.js/Express (Backend)
+
+*   **File Organization**:
+    *   **MUST**: Adhere to the domain-driven structure (`src/domains/chat`, `src/domains/user`).
+    *   **MUST**: Separate concerns within each domain:
+        *   `*.controller.ts`: Handles HTTP requests/responses, input validation.
+        *   `*.service.ts`: Contains core business logic, orchestrates data flow.
+        *   `*.router.ts`: Defines API routes and links to controllers.
+    *   **MUST**: Place common utilities and middleware in `src/common`.
+    *   **MUST**: Place external API clients (e.g., OpenAI, Sentiment) in `src/lib`.
+*   **Import Management**:
+    *   **MUST**: Use absolute imports from `src` (similar to frontend).
+*   **Error Handling**:
+    *   **MUST**: Implement a centralized error handling middleware in Express to catch and format errors consistently.
+    *   **MUST**: Define custom error classes for specific business logic errors (e.g., `NotFoundError`, `ValidationError`).
+    *   **MUST**: Log detailed error information (stack traces, request context) for debugging.
+    *   **MUST**: Return standardized JSON error responses to the client (e.g., `{ error: { message: "...", code: "..." } }`).
+
+```typescript
+// MUST: Custom Error Class
+// src/common/errors.ts
+export class ApiError extends Error {
+  statusCode: number;
+  errorCode: string;
+
+  constructor(message: string, statusCode: number = 500, errorCode: string = 'SERVER_ERROR') {
+    super(message);
+    this.name = this.constructor.name;
+    this.statusCode = statusCode;
+    this.errorCode = errorCode;
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
+
+export class NotFoundError extends ApiError {
+  constructor(message: string = 'Resource not found') {
+    super(message, 404, 'NOT_FOUND');
+  }
+}
+
+// MUST: Centralized Error Middleware (src/common/errorHandler.ts)
+import { Request, Response, NextFunction } from 'express';
+import { ApiError } from './errors';
+
+export const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
+  if (err instanceof ApiError) {
+    return res.status(err.statusCode).json({
+      error: {
+        message: err.message,
+        code: err.errorCode,
+      },
+    });
+  }
+
+  console.error('Unhandled error:', err); // MUST: Log unhandled errors
+  res.status(500).json({
+    error: {
+      message: 'An unexpected error occurred.',
+      code: 'SERVER_ERROR',
+    },
+  });
+};
+
+// MUST: Use in controllers
+// src/domains/chat/chat.controller.ts
+import { Request, Response, NextFunction } from 'express';
+import * as chatService from './chat.service';
+import { ApiError } from 'common/errors';
+
+export const getChatHistory = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user?.id; // Assuming user is attached by auth middleware
+    if (!userId) {
+      throw new ApiError('Authentication required', 401, 'UNAUTHENTICATED');
+    }
+    const history = await chatService.getConversationHistory(userId);
+    res.json(history);
+  } catch (error) {
+    next(error); // Pass to centralized error handler
+  }
+};
+```
+
+## 4. Code Style Rules
+
+### MUST Follow:
+*   **Consistent Formatting**:
+    *   **Rationale**: Ensures readability and reduces merge conflicts.
+    *   **Implementation**: Enforce Prettier and ESLint with a shared configuration. All code MUST pass linting and formatting checks.
+*   **Meaningful Naming**:
+    *   **Rationale**: Improves code comprehension and maintainability.
+    *   **Implementation**: Use descriptive names for variables, functions, components, and files.
+        *   Variables: `camelCase` (e.g., `chatMessage`, `userId`).
+        *   Functions: `camelCase` (e.g., `sendMessage`, `fetchUser`).
+        *   Components: `PascalCase` (e.g., `ChatMessage`, `AuthForm`).
+        *   Files: `kebab-case` for general files (e.g., `chat-service.ts`), `PascalCase` for React components (e.g., `Button.tsx`).
+*   **Immutability**:
+    *   **Rationale**: Prevents unexpected side effects and makes state changes predictable, especially in React.
+    *   **Implementation**: Avoid direct modification of objects or arrays. Use spread syntax (`...`), `map`, `filter`, `Object.assign`, etc., for updates.
+
+```typescript
+// MUST: Immutability
+const updateMessage = (messages: Message[], id: string, newText: string) => {
+  return messages.map(msg => msg.id === id ? { ...msg, text: newText } : msg);
+};
+
+// MUST NOT: Mutability
+// const updateMessage = (messages: Message[], id: string, newText: string) => {
+//   const messageToUpdate = messages.find(msg => msg.id === id);
+//   if (messageToUpdate) {
+//     messageToUpdate.text = newText; // Direct modification
+//   }
+//   return messages;
+// };
+```
+
+*   **Concise Functions/Components**:
+    *   **Rationale**: Improves readability, testability, and reusability.
+    *   **Implementation**: Functions and components should ideally perform a single, well-defined task. Break down complex logic into smaller, focused units.
+*   **Environment Variables**:
+    *   **Rationale**: Securely manage sensitive information and allow easy configuration across environments.
+    *   **Implementation**: All API keys (OpenAI, Supabase), database credentials, and other configurable values MUST be stored in environment variables (e.g., `.env` files, Vercel/Render secrets). Never hardcode them.
+
+### MUST NOT Do:
+*   **Huge, Multi-Responsibility Modules**:
+    *   **Rationale**: Violates Single Responsibility Principle, makes code hard to understand, test, and maintain.
+    *   **Avoid**: A single file or module handling all authentication, chat, and user profile logic.
+    *   **Fix**: Separate logic by domain and layer (e.g., `auth.controller.ts`, `chat.service.ts`).
+*   **Complex State Management Patterns**:
+    *   **Rationale**: Introduces unnecessary boilerplate and complexity for a project using Zustand, which is designed for simplicity.
+    *   **Avoid**: Over-engineering global state with multiple reducers, selectors, and middleware if not strictly necessary.
+    *   **Fix**: Leverage Zustand's simple API for global state. Use React's `useState` or `useReducer` for local component state.
+*   **Direct DOM Manipulation in React**:
+    *   **Rationale**: Bypasses React's declarative rendering model, leading to unpredictable behavior and difficult debugging.
+    *   **Avoid**: Using `document.getElementById`, `querySelector`, etc., to directly modify the DOM within React components.
+    *   **Fix**: Use React state, refs (`useRef`), or conditional rendering to manage UI changes.
+
+```typescript
+// MUST NOT: Direct DOM manipulation
+// const MyComponent = () => {
+//   useEffect(() => {
+//     document.getElementById('my-element').style.display = 'none';
+//   }, []);
+//   return <div id="my-element">...</div>;
+// };
+
+// MUST: Use React state or refs
+const MyComponent = () => {
+  const [isVisible, setIsVisible] = useState(true);
+  return (
+    <div style={{ display: isVisible ? 'block' : 'none' }}>
+      <button onClick={() => setIsVisible(false)}>Hide</button>
+    </div>
+  );
+};
+```
+
+*   **Uncontrolled Components with Forms**:
+    *   **Rationale**: Makes form state difficult to manage and validate.
+    *   **Avoid**: Relying solely on `ref` for form inputs without managing state.
+    *   **Fix**: Use controlled components where input values are tied to React state.
+
+## 5. Architecture Patterns
+
+### Component/Module Structure Guidelines
+*   **Frontend (React)**:
+    *   **MUST**: Organize components into `features/` (for domain-specific components like `ChatWindow`, `AuthForm`) and `components/ui/` (for generic, reusable UI elements like `Button`, `Input`).
+    *   **MUST**: Keep components small and focused on a single responsibility.
+    *   **MUST**: Use `props` for communication between parent and child components.
+    *   **MUST NOT**: Create "God Components" that handle too many responsibilities.
+*   **Backend (Node.js)**:
+    *   **MUST**: Follow the `controller -> service -> (repository/client)` pattern for all business logic.
+    *   **Controller**: Handles request parsing, validation, and sending responses. Delegates business logic to services.
+    *   **Service**: Contains the core business logic, orchestrates calls to external APIs or database repositories.
+    *   **Repository/Client**: Abstracts database interactions (e.g., Supabase client calls) or external API calls (e.g., OpenAI API client).
+
+### Data Flow Patterns
+*   **Unidirectional Data Flow**:
+    *   **MUST**: Data flows primarily from parent components to child components via props in React. State changes trigger re-renders, propagating updates downwards.
+*   **Client-Server Communication**:
+    *   **MUST**: All client-to-server communication for core business logic (e.g., sending chat messages, fetching history) MUST go through the Node.js backend via RESTful API calls.
+    *   **MUST**: Direct Supabase Auth calls from the client are permissible for authentication workflows (login, signup).
+*   **Backend-External Services Interaction**:
+    *   **MUST**: The backend acts as a proxy for all external AI services (OpenAI, Sentiment API) to protect API keys and apply business logic/rate limiting.
+
+### State Management Conventions
+*   **Global State (Zustand)**:
+    *   **MUST**: Use Zustand for application-wide state that affects multiple, disparate components (e.g., user authentication status, global loading indicators, conversation history).
+    *   **MUST**: Define separate Zustand stores for distinct global concerns (e.g., `authStore.ts`, `chatStore.ts`).
+    *   **MUST**: Keep Zustand store logic minimal and focused on state updates. Complex derivations should be done at the component level or via Zustand selectors.
+*   **Local Component State**:
+    *   **MUST**: Use React's `useState` or `useReducer` for state that is only relevant to a single component or a small, co-located group of components.
+
+### API Design Standards
+*   **RESTful Principles**:
+    *   **MUST**: Design API endpoints following RESTful conventions (e.g., `/api/v1/chats`, `/api/v1/users`).
+    *   **MUST**: Use appropriate HTTP methods:
+        *   `GET`: Retrieve resources.
+        *   `POST`: Create new resources.
+        *   `PUT`/`PATCH`: Update existing resources.
+        *   `DELETE`: Remove resources.
+*   **JSON Format**:
+    *   **MUST**: All request and response bodies MUST be in JSON format.
+*   **Consistent Response Structure**:
+    *   **MUST**: Standardize API response structures for both success and error cases.
+
+```json
+// MUST: Success Response Structure
+{
+  "data": {
+    "id": "chat-123",
+    "messages": [
+      // ...
+    ]
+  },
+  "metadata": {
+    "count": 10,
+    "nextCursor": "abc"
+  }
+}
+
+// MUST: Error Response Structure
+{
+  "error": {
+    "message": "Invalid input provided.",
+    "code": "VALIDATION_ERROR",
+    "details": {
+      "field": "message",
+      "reason": "Message cannot be empty"
+    }
+  }
+}
+```
+
+*   **API Versioning**:
+    *   **MUST**: Include API versioning in the URL (e.g., `/api/v1/`). This allows for future breaking changes without affecting existing clients.
+*   **Input Validation**:
+    *   **MUST**: All API endpoints MUST validate incoming request data (e.g., using libraries like Zod or Joi) to ensure data integrity and security.
